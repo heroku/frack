@@ -25,8 +25,14 @@ module Endpoints
         name = json_body['name']
         DB.transaction do
           name.gsub!(/\W/,'')
-          DB["create table #{name} (id uuid primary key default uuid_generate_v4(), data jsonb);"].all
-          DB["create index on #{name} using gin (data jsonb_path_ops);"].all
+          DB.create_table(name) do
+            column :id,         :uuid,        default: Sequel.function(:uuid_generate_v4), primary_key: true
+            column :data,       :jsonb
+            column :seq,        :int,         default: 0
+            column :created_at, :timestamptz, default: Sequel.function(:now)
+            column :updated_at, :timestamptz, default: Sequel.function(:now)
+            index :data, type: :gin, opclass: :jsonb_path_ops
+          end
         end
         status 201
         encode name
