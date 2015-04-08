@@ -13,7 +13,7 @@ Routes = Rack::Builder.new do
   use Rack::SSL if Config.force_ssl?
 
   use Pliny::Router do
-    # mount all endpoints here
+    mount Endpoints::Tables
   end
 
   # root app; but will also handle some defaults like 404
