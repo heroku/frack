@@ -17,8 +17,17 @@ module Endpoints
       end
 
       get "/:name/:id" do |name, id|
-        data = DB.from(name).where(id: id).first
-        encode(data)
+        row = DB.from(name).where(id: id).first
+        encode(row)
+      end
+
+      put "/:name/:id" do |name, id|
+        dataset = DB.from(name).where(id: id)
+        row = dataset.first
+        row[:updated_at] = Time.now.utc
+        row[:seq] += 1
+        dataset.update(row)
+        encode(row)
       end
 
       post do
@@ -39,7 +48,7 @@ module Endpoints
       end
 
       post "/:name" do |name|
-        id = DB.from(name).insert(data: MultiJson.dump(json_body))
+        id = DB.from(name).insert(data: raw_body)
         encode(id)
       end
 
@@ -51,9 +60,11 @@ module Endpoints
 
       private
       def json_body
-        MultiJson.decode(request.body.read).tap do
-          request.body.rewind
-        end
+        MultiJson.decode(raw_body)
+      end
+
+      def raw_body
+        request.body.read.tap { request.body.rewind }
       end
     end
   end
