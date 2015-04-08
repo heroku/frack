@@ -16,6 +16,11 @@ module Endpoints
         encode(tables)
       end
 
+      get "/:name/:id" do |name, id|
+        data = DB.from(name).where(id: id).first
+        encode(data)
+      end
+
       post do
         name = json_body['name']
         DB.transaction do
@@ -25,6 +30,11 @@ module Endpoints
         end
         status 201
         encode name
+      end
+
+      post "/:name" do |name|
+        id = DB.from(name).insert(data: MultiJson.dump(json_body))
+        encode(id)
       end
 
       delete "/:name" do |name|
