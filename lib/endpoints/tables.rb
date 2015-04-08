@@ -7,13 +7,7 @@ module Endpoints
       end
 
       get do
-       tables = DB["
-         SELECT table_schema || '.' || table_name AS table
-         FROM   information_schema.tables
-         WHERE  table_type = 'BASE TABLE'
-         AND    table_schema NOT IN ('pg_catalog', 'information_schema');
-        "].map{|t| t[:table]}
-        encode(tables)
+        encode(DB.tables)
       end
 
       get "/:name/:id" do |name, id|
@@ -53,8 +47,7 @@ module Endpoints
       end
 
       delete "/:name" do |name|
-        name.gsub!(/\W/,'')
-        DB["drop table #{name};"].all
+        DB.drop_table name
         status 200
       end
 
