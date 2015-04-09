@@ -12,7 +12,7 @@ module Endpoints
 
       get "/:name/:id" do |name, id|
         row = DB.from(name).where(id: id).first
-        encode(row)
+        serialize_row(row)
       end
 
       put "/:name/:id" do |name, id|
@@ -20,8 +20,9 @@ module Endpoints
         row = dataset.first
         row[:updated_at] = Time.now.utc
         row[:seq] += 1
+        row[:data] = raw_body
         dataset.update(row)
-        encode(row)
+        serialize_row(row)
       end
 
       post do
@@ -52,6 +53,11 @@ module Endpoints
       end
 
       private
+      def serialize_row(row)
+        row[:data] = MultiJson.decode(row[:data])
+        encode(row)
+      end
+
       def json_body
         MultiJson.decode(raw_body)
       end
