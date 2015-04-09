@@ -70,16 +70,19 @@ module Endpoints
       end
 
       def modify_row(table:, id:)
-        dataset = DB.from(table).where(id: id)
-        row = dataset.first
-        row[:updated_at] = Time.now.utc
-        row[:seq] += 1
+        DB.transaction(isolation: :serializable, retry_on: [Sequel::SerializationFailure]) do
+          dataset = DB.from(table).where(id: id)
+          row = dataset.first
+          row[:updated_at] = Time.now.utc
+          row[:seq] += 1
 
-        new_data = yield MultiJson.decode(row[:data])
-        row[:data] = MultiJson.encode(new_data)
+          new_data = yield MultiJson.decode(row[:data])
+          row[:data] = MultiJson.encode(new_data)
 
-        dataset.update(row)
-        return row
+          dataset.update(row)
+
+          row
+        end
       end
 
       def json_body
