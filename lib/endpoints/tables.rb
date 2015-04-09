@@ -25,6 +25,18 @@ module Endpoints
         serialize_row(row)
       end
 
+      patch "/:name/:id" do |name, id|
+        dataset = DB.from(name).where(id: id)
+        row = dataset.first
+        row[:updated_at] = Time.now.utc
+        row[:seq] += 1
+        data = MultiJson.decode(row[:data])
+        data.merge!(json_body)
+        row[:data] = MultiJson.encode(data)
+        dataset.update(row)
+        serialize_row(row)
+      end
+
       post do
         name = json_body['name']
         DB.transaction do
