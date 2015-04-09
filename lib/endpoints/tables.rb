@@ -16,24 +16,16 @@ module Endpoints
       end
 
       put "/:name/:id" do |name, id|
-        dataset = DB.from(name).where(id: id)
-        row = dataset.first
-        row[:updated_at] = Time.now.utc
-        row[:seq] += 1
-        row[:data] = raw_body
-        dataset.update(row)
+        row = modify_row(table: name, id: id) do
+          json_body
+        end
         serialize_row(row)
       end
 
       patch "/:name/:id" do |name, id|
-        dataset = DB.from(name).where(id: id)
-        row = dataset.first
-        row[:updated_at] = Time.now.utc
-        row[:seq] += 1
-        data = MultiJson.decode(row[:data])
-        data.merge!(json_body)
-        row[:data] = MultiJson.encode(data)
-        dataset.update(row)
+        row = modify_row(table: name, id: id) do |data|
+          data.merge!(json_body)
+        end
         serialize_row(row)
       end
 
@@ -68,6 +60,19 @@ module Endpoints
       def serialize_row(row)
         row[:data] = MultiJson.decode(row[:data])
         encode(row)
+      end
+
+      def modify_row(table:, id:)
+        dataset = DB.from(table).where(id: id)
+        row = dataset.first
+        row[:updated_at] = Time.now.utc
+        row[:seq] += 1
+
+        new_data = yield MultiJson.decode(row[:data])
+        row[:data] = MultiJson.encode(new_data)
+
+        dataset.update(row)
+        return row
       end
 
       def json_body
