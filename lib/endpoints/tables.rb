@@ -10,30 +10,37 @@ module Endpoints
         encode(DB.tables)
       end
 
-      get "/:name/:id" do |name, id|
-        row = DB.from(name).where(id: id).first
+      get "/:table" do |table|
+        MultiJson.decode(params[:q]) # ensure json query
+        rows = DB.from(table).where("data @> ?", params[:q]).all
+        rows.each {|r| r[:data] = MultiJson.decode(r[:data])}
+        encode(rows)
+      end
+
+      get "/:table/:id" do |table, id|
+        row = DB.from(table).where(id: id).first
         serialize_row(row)
       end
 
-      put "/:name/:id" do |name, id|
-        row = modify_row(table: name, id: id) do
+      put "/:table/:id" do |table, id|
+        row = modify_row(table: table, id: id) do
           json_body
         end
         serialize_row(row)
       end
 
-      patch "/:name/:id" do |name, id|
-        row = modify_row(table: name, id: id) do |data|
+      patch "/:table/:id" do |table, id|
+        row = modify_row(table: table, id: id) do |data|
           data.merge!(json_body)
         end
         serialize_row(row)
       end
 
       post do
-        name = json_body['name']
+        table = json_body['table']
         DB.transaction do
-          name.gsub!(/\W/,'')
-          DB.create_table(name) do
+          table.gsub!(/\W/,'')
+          DB.create_table(table) do
             column :id,         :uuid,        default: Sequel.function(:uuid_generate_v4), primary_key: true
             column :data,       :jsonb
             column :seq,        :int,         default: 0
@@ -43,16 +50,16 @@ module Endpoints
           end
         end
         status 201
-        encode name
+        encode table
       end
 
-      post "/:name" do |name|
-        id = DB.from(name).insert(data: raw_body)
+      post "/:table" do |table|
+        id = DB.from(table).insert(data: raw_body)
         encode(id)
       end
 
-      delete "/:name" do |name|
-        DB.drop_table name
+      delete "/:table" do |table|
+        DB.drop_table table
         status 200
       end
 
